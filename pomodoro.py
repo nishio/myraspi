@@ -1,5 +1,5 @@
 """
-count down timer with HT16K33 Adafruit LED
+pomodoro timer with HT16K33 Adafruit LED
 """
 
 import smbus
@@ -9,12 +9,11 @@ bus = smbus.SMBus(1)
 addr = 0x70
 
 # initialization
-data = [0x21, 0x81, 0xEF]
+data = [0x21, 0x81, 0xE0]
 wait = [10, 10, 10]  # ms
 
 for d, w in zip(data, wait):
   print 'write', hex(d), 'wait', w, 'ms'
-  #bus.write_byte_data(addr, 0b00000000, d)
   bus.write_byte(addr, d)
   sleep(w / 1000.0)
 sleep(0.1)
@@ -28,21 +27,42 @@ buf = [0] * 16
 def draw(v):
   buf[0] = numeric[v[0]]
   buf[2] = numeric[v[1]]
+  buf[4] = 0xff
   buf[6] = numeric[v[2]]
   buf[8] = numeric[v[3]]
 
   for i, v in enumerate(buf):
     bus.write_byte_data(addr, i, v)
 
-def start():
-  left = 25 * 60
-  while left:
-    minute = left / 60
-    second = left % 60
-    draw([minute / 10, minute % 10, second / 10, second % 10])
-    left -= 1
-    sleep(1)
+import RPi.GPIO as GPIO
+P1 = 4
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(P1, GPIO.IN)
+def button(e):
+  global value, dvalue
+  print 'pushed'
+  dvalue = -1
+  value = 25 * 60
+GPIO.add_event_detect(P1, GPIO.FALLING, callback=button, bouncetime=300)
 
-start()
-print 'ok'
+value = 25 * 60
+dvalue = 0
+def start():
+  global value, dvalue
+  while True:
+    minute = value / 60
+    second = value % 60
+    draw([minute / 10, minute % 10, second / 10, second % 10])
+    value += dvalue
+    sleep(1)
+    if not value:  # pomodoro finished
+      dvalue = 1  # count up
+try:
+  start()
+except KeyboardInterrupt:
+  GPIO.cleanup()
+except:
+  GPIO.cleanup()
+  raise
+
 
