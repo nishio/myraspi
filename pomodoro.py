@@ -57,6 +57,8 @@ def start():
     sleep(1)
     if not value:  # pomodoro finished
       dvalue = 1  # count up
+    if value == 25 * 60 and dvalue == 1:
+      dvalue = 0  # stop counting up
 try:
   start()
 except KeyboardInterrupt:
